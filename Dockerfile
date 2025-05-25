@@ -19,11 +19,17 @@ ARG REPO_COMMIT=HEAD
 # Clone the repository
 RUN git clone --depth 1 ${REPO_URL} .
 
-# Checkout specific branch or tag
+# Checkout specific branch if specified
 RUN if [ "$REPO_BRANCH" != "main" ]; then git checkout ${REPO_BRANCH}; fi
 
-# If a specific commit or tag is specified, checkout that reference
-RUN if [ "$REPO_COMMIT" != "HEAD" ]; then git fetch --depth 1 origin ${REPO_COMMIT} && git checkout ${REPO_COMMIT}; fi
+# If a specific commit is specified, checkout that commit
+RUN if [ "$REPO_COMMIT" != "HEAD" ]; then \
+    if git show-ref --tags | grep -q "refs/tags/${REPO_COMMIT}"; then \
+        git checkout tags/${REPO_COMMIT}; \
+    else \
+        git fetch --depth 1 origin ${REPO_COMMIT} && git checkout ${REPO_COMMIT}; \
+    fi; \
+fi
 
 # ================================
 # Stage 1-1: Composer Install
