@@ -68,7 +68,7 @@ jobs:
 
       - name: Configure Docker for Artifact Registry
         run: |
-          gcloud auth configure-docker docker.pkg.dev --quiet
+          gcloud auth configure-docker us-docker.pkg.dev --quiet
 
       - name: Build and push
         uses: docker/build-push-action@v5
@@ -76,8 +76,8 @@ jobs:
           context: .
           push: true
           tags: |
-            docker.pkg.dev/pelican-gcr/pelican/panel:latest
-            docker.pkg.dev/pelican-gcr/pelican/panel:${{ github.sha }}
+            us-docker.pkg.dev/pelican-gcr/pelican/panel:latest
+            us-docker.pkg.dev/pelican-gcr/pelican/panel:${{ github.sha }}
           build-args: |
             REPO_URL=https://github.com/pelican-dev/panel.git
             REPO_BRANCH=${{ github.event.inputs.branch || 'main' }}
