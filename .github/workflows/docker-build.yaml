@@ -45,11 +45,13 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || needs.check_for_updates.outputs.should_build == 'true' }}
     runs-on: ubuntu-latest
     permissions:
-      contents: 'read'
+      contents: 'write'  # Changed from 'read' to 'write'
       id-token: 'write'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}  # Use the built-in token
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
