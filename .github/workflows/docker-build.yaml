@@ -76,8 +76,8 @@ jobs:
           context: .
           push: true
           tags: |
-            docker.pkg.dev/pelican-gcr/pelican-panel-multi/panel:latest
-            docker.pkg.dev/pelican-gcr/pelican-panel-multi/panel:${{ github.sha }}
+            docker.pkg.dev/pelican-gcr/pelican/panel:latest
+            docker.pkg.dev/pelican-gcr/pelican/panel:${{ github.sha }}
           build-args: |
             REPO_URL=https://github.com/pelican-dev/panel.git
             REPO_BRANCH=${{ github.event.inputs.branch || 'main' }}
