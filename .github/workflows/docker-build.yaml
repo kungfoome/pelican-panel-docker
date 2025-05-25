@@ -118,9 +118,9 @@ jobs:
             # For releases, we use the release tag and mark as latest
             DOCKER_TAGS="us-docker.pkg.dev/pelican-gcr/pelican/panel:latest,us-docker.pkg.dev/pelican-gcr/pelican/panel:$RELEASE_TAG"
             
-            # For releases, we checkout the specific tag
-            BRANCH="tags/$RELEASE_TAG"
-            COMMIT=""
+            # For releases, we use the main branch but specify the tag reference
+            BRANCH="main"
+            COMMIT="refs/tags/$RELEASE_TAG"
             
             echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
           else

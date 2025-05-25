@@ -16,10 +16,13 @@ ARG REPO_URL=https://github.com/pelican-dev/panel.git
 ARG REPO_BRANCH=main
 ARG REPO_COMMIT=HEAD
 
-# Clone the specific branch
-RUN git clone --depth 1 --branch ${REPO_BRANCH} ${REPO_URL} .
+# Clone the repository
+RUN git clone --depth 1 ${REPO_URL} .
 
-# If a specific commit is specified, checkout that commit
+# Checkout specific branch or tag
+RUN if [ "$REPO_BRANCH" != "main" ]; then git checkout ${REPO_BRANCH}; fi
+
+# If a specific commit or tag is specified, checkout that reference
 RUN if [ "$REPO_COMMIT" != "HEAD" ]; then git fetch --depth 1 origin ${REPO_COMMIT} && git checkout ${REPO_COMMIT}; fi
 
 # ================================
