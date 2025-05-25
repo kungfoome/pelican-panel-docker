@@ -1,4 +1,4 @@
-name: Build and Push Docker Image to GCR
+name: Build and Push Docker Image to Artifact Registry
 
 on:
   schedule:
@@ -13,8 +13,6 @@ on:
         description: 'Specific commit to build'
         required: false
         default: 'HEAD'
-  repository_dispatch:
-    types: [pelican_panel_update]
 
 jobs:
   check_for_updates:
@@ -44,7 +42,7 @@ jobs:
 
   build_and_push:
     needs: check_for_updates
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch' || needs.check_for_updates.outputs.should_build == 'true' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.check_for_updates.outputs.should_build == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -54,15 +52,21 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Authenticate to Google Cloud
+        id: auth
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
+          token_format: access_token
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Configure Docker for GCR
-        run: gcloud auth configure-docker
+      - name: Login to Artifact Registry
+        uses: docker/login-action@v3
+        with:
+          registry: us-east4-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.auth.outputs.access_token }}
 
       - name: Build and push
         uses: docker/build-push-action@v5
@@ -70,8 +74,8 @@ jobs:
           context: .
           push: true
           tags: |
-            gcr.io/${{ secrets.GCP_PROJECT_ID }}/pelican-panel:latest
-            gcr.io/${{ secrets.GCP_PROJECT_ID }}/pelican-panel:${{ github.sha }}
+            us-east4-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/pelican-panel/panel:latest
+            us-east4-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/pelican-panel/panel:${{ github.sha }}
           build-args: |
             REPO_URL=https://github.com/pelican-dev/panel.git
             REPO_BRANCH=${{ github.event.inputs.branch || 'main' }}
