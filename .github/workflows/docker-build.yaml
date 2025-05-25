@@ -13,6 +13,9 @@ on:
         description: "Specific commit to build"
         required: false
         default: "HEAD"
+      release_tag:
+        description: "Specific release tag to build (overrides commit)"
+        required: false
 
 jobs:
   check_for_updates:
@@ -20,8 +23,10 @@ jobs:
     outputs:
       should_build: ${{ steps.check.outputs.should_build }}
       latest_commit: ${{ steps.check.outputs.latest_commit }}
+      is_release: ${{ steps.check_release.outputs.is_release }}
+      latest_release: ${{ steps.check_release.outputs.latest_release }}
     steps:
-      - name: Check for updates
+      - name: Check for updates in main branch
         id: check
         run: |
           LATEST_COMMIT=$(curl -s https://api.github.com/repos/pelican-dev/panel/commits/main | jq -r '.sha')
@@ -39,19 +44,46 @@ jobs:
           fi
 
           echo "latest_commit=$LATEST_COMMIT" >> $GITHUB_OUTPUT
+          
+      - name: Check for latest release
+        id: check_release
+        run: |
+          if [ "${{ github.event.inputs.release_tag }}" != "" ]; then
+            # Use manually specified release tag
+            echo "is_release=true" >> $GITHUB_OUTPUT
+            echo "latest_release=${{ github.event.inputs.release_tag }}" >> $GITHUB_OUTPUT
+          else
+            # Check for latest release from GitHub API
+            LATEST_RELEASE=$(curl -s https://api.github.com/repos/pelican-dev/panel/releases/latest | jq -r '.tag_name')
+            
+            if [ -f ".last_built_release" ]; then
+              LAST_BUILT_RELEASE=$(cat .last_built_release)
+              if [ "$LATEST_RELEASE" != "$LAST_BUILT_RELEASE" ] && [ "$LATEST_RELEASE" != "null" ]; then
+                echo "is_release=true" >> $GITHUB_OUTPUT
+                echo "latest_release=$LATEST_RELEASE" >> $GITHUB_OUTPUT
+              else
+                echo "is_release=false" >> $GITHUB_OUTPUT
+              fi
+            elif [ "$LATEST_RELEASE" != "null" ]; then
+              echo "is_release=true" >> $GITHUB_OUTPUT
+              echo "latest_release=$LATEST_RELEASE" >> $GITHUB_OUTPUT
+            else
+              echo "is_release=false" >> $GITHUB_OUTPUT
+            fi
+          fi
 
   build_and_push:
     needs: check_for_updates
-    if: ${{ github.event_name == 'workflow_dispatch' || needs.check_for_updates.outputs.should_build == 'true' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.check_for_updates.outputs.should_build == 'true' || needs.check_for_updates.outputs.is_release == 'true' }}
     runs-on: ubuntu-latest
     permissions:
-      contents: "write" # Changed from 'read' to 'write'
+      contents: "write"
       id-token: "write"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }} # Use the built-in token
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -69,28 +101,71 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: |
           gcloud auth configure-docker us-docker.pkg.dev --quiet
+          
+      - name: Set build parameters
+        id: build_params
+        run: |
+          # Default to main branch and latest commit
+          BRANCH="${{ github.event.inputs.branch || 'main' }}"
+          COMMIT="${{ github.event.inputs.commit || needs.check_for_updates.outputs.latest_commit || 'HEAD' }}"
+          
+          # Set tag variables
+          if [[ "${{ needs.check_for_updates.outputs.is_release }}" == "true" ]]; then
+            # This is a release build
+            RELEASE_TAG="${{ needs.check_for_updates.outputs.latest_release }}"
+            echo "Building release: $RELEASE_TAG"
+            
+            # For releases, we use the release tag and mark as latest
+            DOCKER_TAGS="us-docker.pkg.dev/pelican-gcr/pelican/panel:latest,us-docker.pkg.dev/pelican-gcr/pelican/panel:$RELEASE_TAG"
+            
+            # For releases, we checkout the specific tag
+            BRANCH="tags/$RELEASE_TAG"
+            COMMIT=""
+            
+            echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
+          else
+            # This is a nightly build
+            echo "Building nightly from commit: $COMMIT"
+            
+            # For nightlies, we use the commit SHA and nightly tag
+            DOCKER_TAGS="us-docker.pkg.dev/pelican-gcr/pelican/panel:nightly,us-docker.pkg.dev/pelican-gcr/pelican/panel:${{ github.sha }}"
+            
+            echo "release_tag=" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "docker_tags=$DOCKER_TAGS" >> $GITHUB_OUTPUT
+          echo "repo_branch=$BRANCH" >> $GITHUB_OUTPUT
+          echo "repo_commit=$COMMIT" >> $GITHUB_OUTPUT
 
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: |
-            us-docker.pkg.dev/pelican-gcr/pelican/panel:latest
-            us-docker.pkg.dev/pelican-gcr/pelican/panel:${{ github.sha }}
+          tags: ${{ steps.build_params.outputs.docker_tags }}
           build-args: |
             REPO_URL=https://github.com/pelican-dev/panel.git
-            REPO_BRANCH=${{ github.event.inputs.branch || 'main' }}
-            REPO_COMMIT=${{ github.event.inputs.commit || needs.check_for_updates.outputs.latest_commit || 'HEAD' }}
+            REPO_BRANCH=${{ steps.build_params.outputs.repo_branch }}
+            REPO_COMMIT=${{ steps.build_params.outputs.repo_commit }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Store latest commit hash
-        if: ${{ needs.check_for_updates.outputs.latest_commit != '' }}
+        if: ${{ needs.check_for_updates.outputs.latest_commit != '' && needs.check_for_updates.outputs.is_release != 'true' }}
         run: |
           echo "${{ needs.check_for_updates.outputs.latest_commit }}" > .last_built_commit
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           git add .last_built_commit
           git commit -m "Update last built commit [skip ci]" || echo "No changes to commit"
+          git push
+          
+      - name: Store latest release tag
+        if: ${{ needs.check_for_updates.outputs.is_release == 'true' && steps.build_params.outputs.release_tag != '' }}
+        run: |
+          echo "${{ steps.build_params.outputs.release_tag }}" > .last_built_release
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add .last_built_release
+          git commit -m "Update last built release [skip ci]" || echo "No changes to commit"
           git push
