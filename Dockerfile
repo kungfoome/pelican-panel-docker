@@ -61,7 +61,7 @@ RUN composer install --no-dev --no-interaction --no-autoloader --no-scripts --ig
 # ================================
 # Stage 1-2: Yarn Install
 # ================================
-FROM node:23-alpine-slim AS yarn
+FROM node:24-slim AS yarn
 
 WORKDIR /build
 
