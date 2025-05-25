@@ -127,8 +127,9 @@ jobs:
             # This is a nightly build
             echo "Building nightly from commit: $COMMIT"
             
-            # For nightlies, we use the commit SHA and nightly tag
-            DOCKER_TAGS="us-docker.pkg.dev/pelican-gcr/pelican/panel:nightly,us-docker.pkg.dev/pelican-gcr/pelican/panel:${{ github.sha }}"
+            # For nightlies, we use the commit SHA from Panel and nightly tag
+            SHORT_SHA=$(echo "$COMMIT" | cut -c1-8)
+            DOCKER_TAGS="us-docker.pkg.dev/pelican-gcr/pelican/panel:nightly,us-docker.pkg.dev/pelican-gcr/pelican/panel:sha-$SHORT_SHA"
             
             echo "release_tag=" >> $GITHUB_OUTPUT
           fi
