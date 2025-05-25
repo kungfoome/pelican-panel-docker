@@ -2,17 +2,17 @@ name: Build and Push Docker Image to Artifact Registry
 
 on:
   schedule:
-    - cron: '0 0 * * *'
+    - cron: "0 0 * * *"
   workflow_dispatch:
     inputs:
       branch:
-        description: 'Branch to build from'
+        description: "Branch to build from"
         required: true
-        default: 'main'
+        default: "main"
       commit:
-        description: 'Specific commit to build'
+        description: "Specific commit to build"
         required: false
-        default: 'HEAD'
+        default: "HEAD"
 
 jobs:
   check_for_updates:
@@ -26,7 +26,7 @@ jobs:
         run: |
           LATEST_COMMIT=$(curl -s https://api.github.com/repos/pelican-dev/panel/commits/main | jq -r '.sha')
           echo "Latest commit: $LATEST_COMMIT"
-          
+
           if [ -f ".last_built_commit" ]; then
             LAST_BUILT_COMMIT=$(cat .last_built_commit)
             if [ "$LATEST_COMMIT" != "$LAST_BUILT_COMMIT" ]; then
@@ -37,7 +37,7 @@ jobs:
           else
             echo "should_build=true" >> $GITHUB_OUTPUT
           fi
-          
+
           echo "latest_commit=$LATEST_COMMIT" >> $GITHUB_OUTPUT
 
   build_and_push:
@@ -45,30 +45,29 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || needs.check_for_updates.outputs.should_build == 'true' }}
     runs-on: ubuntu-latest
     permissions:
-      contents: 'write'  # Changed from 'read' to 'write'
-      id-token: 'write'
+      contents: "write" # Changed from 'read' to 'write'
+      id-token: "write"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}  # Use the built-in token
+          token: ${{ secrets.GITHUB_TOKEN }} # Use the built-in token
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - id: 'auth'
-        name: 'Authenticate to Google Cloud'
-        uses: 'google-github-actions/auth@v1'
+      - id: "auth"
+        name: "Authenticate to Google Cloud"
+        uses: "google-github-actions/auth@v1"
         with:
-          workload_identity_provider: '${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}'
-          service_account: '${{ secrets.SERVICE_ACCOUNT_EMAIL }}'
+          workload_identity_provider: "${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}"
+          service_account: "${{ secrets.SERVICE_ACCOUNT_EMAIL }}"
 
       - name: Set up Cloud SDK
-        uses: 'google-github-actions/setup-gcloud@v1'
+        uses: "google-github-actions/setup-gcloud@v1"
 
       - name: Configure Docker for Artifact Registry
         run: |
-          gcloud auth configure-docker us-east4-docker.pkg.dev --quiet
           gcloud auth configure-docker docker.pkg.dev --quiet
 
       - name: Build and push
@@ -77,8 +76,6 @@ jobs:
           context: .
           push: true
           tags: |
-            us-east4-docker.pkg.dev/pelican-gcr/pelican-panel/panel:latest
-            us-east4-docker.pkg.dev/pelican-gcr/pelican-panel/panel:${{ github.sha }}
             docker.pkg.dev/pelican-gcr/pelican-panel-multi/panel:latest
             docker.pkg.dev/pelican-gcr/pelican-panel-multi/panel:${{ github.sha }}
           build-args: |
