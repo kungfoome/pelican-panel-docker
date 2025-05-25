@@ -1,0 +1,90 @@
+name: Build and Push Docker Image to GCR
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to build from'
+        required: true
+        default: 'main'
+      commit:
+        description: 'Specific commit to build'
+        required: false
+        default: 'HEAD'
+  repository_dispatch:
+    types: [pelican_panel_update]
+
+jobs:
+  check_for_updates:
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.check.outputs.should_build }}
+      latest_commit: ${{ steps.check.outputs.latest_commit }}
+    steps:
+      - name: Check for updates
+        id: check
+        run: |
+          LATEST_COMMIT=$(curl -s https://api.github.com/repos/pelican-dev/panel/commits/main | jq -r '.sha')
+          echo "Latest commit: $LATEST_COMMIT"
+          
+          if [ -f ".last_built_commit" ]; then
+            LAST_BUILT_COMMIT=$(cat .last_built_commit)
+            if [ "$LATEST_COMMIT" != "$LAST_BUILT_COMMIT" ]; then
+              echo "should_build=true" >> $GITHUB_OUTPUT
+            else
+              echo "should_build=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "should_build=true" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "latest_commit=$LATEST_COMMIT" >> $GITHUB_OUTPUT
+
+  build_and_push:
+    needs: check_for_updates
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch' || needs.check_for_updates.outputs.should_build == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            gcr.io/${{ secrets.GCP_PROJECT_ID }}/pelican-panel:latest
+            gcr.io/${{ secrets.GCP_PROJECT_ID }}/pelican-panel:${{ github.sha }}
+          build-args: |
+            REPO_URL=https://github.com/pelican-dev/panel.git
+            REPO_BRANCH=${{ github.event.inputs.branch || 'main' }}
+            REPO_COMMIT=${{ github.event.inputs.commit || needs.check_for_updates.outputs.latest_commit || 'HEAD' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Store latest commit hash
+        if: ${{ needs.check_for_updates.outputs.latest_commit != '' }}
+        run: |
+          echo "${{ needs.check_for_updates.outputs.latest_commit }}" > .last_built_commit
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add .last_built_commit
+          git commit -m "Update last built commit [skip ci]" || echo "No changes to commit"
+          git push
