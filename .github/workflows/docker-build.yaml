@@ -210,6 +210,8 @@ jobs:
           provenance: false
 
       - name: Store latest commit hash
+        # Only update tracking file for scheduled builds, not manual builds
+        if: ${{ github.event_name != 'workflow_dispatch' }}
         run: |
           echo "${{ needs.check_updates.outputs.nightly_commit }}" > .last_built_commit
           git config --global user.name "GitHub Actions"
@@ -284,6 +286,8 @@ jobs:
           provenance: false
 
       - name: Store latest release tag
+        # Only update tracking file for scheduled builds, not manual builds
+        if: ${{ github.event_name != 'workflow_dispatch' }}
         run: |
           echo "${{ needs.check_updates.outputs.release_tag }}" > .last_built_release
           git config --global user.name "GitHub Actions"
