@@ -44,13 +44,6 @@ check_user() {
 
 # Function to initialize the application
 initialize_app() {
-    # Ensure symlinks are properly created at runtime
-    echo "Setting up symlinks for config and data paths"
-    rm -f "$PELICAN_APP/.env" "$PELICAN_APP/Caddyfile" "$PELICAN_APP/database/database.sqlite" 2>/dev/null || true
-    ln -sf "$PELICAN_CONFIG/.env" "$PELICAN_APP/.env"
-    ln -sf "$PELICAN_CONFIG/Caddyfile" "$PELICAN_APP/Caddyfile"
-    ln -sf "$PELICAN_DATA/database/database.sqlite" "$PELICAN_APP/database/database.sqlite"
-
     # Check if a custom Caddyfile exists in the config volume
     CADDYFILE="$PELICAN_CONFIG/Caddyfile"
     if [ ! -f "$CADDYFILE" ]; then
@@ -60,22 +53,33 @@ initialize_app() {
     else
         echo "Using custom Caddyfile from config volume"
     fi
+    ln -sf "$PELICAN_CONFIG/Caddyfile" "$PELICAN_APP/Caddyfile"
 
     # Handle .env file
     ENVFILE="$PELICAN_CONFIG/.env"
     if [ ! -f "$ENVFILE" ]; then
-        echo "Creating minimal .env file"
-        touch "$ENVFILE"
+        echo "Creating minimal .env file with APP_KEY placeholder"
+        echo "APP_KEY=" > "$ENVFILE"
         
         # Ensure proper permissions on the new file
         if [ "$(id -u)" != "0" ]; then
             chmod g+rw "$ENVFILE"
         fi
+    else
+        # If .env exists but doesn't have APP_KEY, add it
+        if ! grep -q "^APP_KEY=" "$ENVFILE"; then
+            echo "Adding APP_KEY placeholder to existing .env file"
+            echo "APP_KEY=" >> "$ENVFILE"
+        fi
     fi
 
-    # Check if APP_KEY needs to be generated
-    if ! grep -q "^APP_KEY=.\+" "$ENVFILE"; then
-        echo "No APP_KEY found, generating one..."
+    # Create symlink to .env file
+    ln -sf "$PELICAN_CONFIG/.env" "$PELICAN_APP/.env"
+
+    # Check if APP_KEY is empty and generate if needed
+    if grep -q "^APP_KEY=$" "$ENVFILE"; then
+        echo "APP_KEY is empty, generating new key..."
+        cd "$PELICAN_APP"
         php artisan key:generate
     else
         echo "APP_KEY is already set in .env file"
@@ -99,6 +103,7 @@ initialize_app() {
         touch "$PELICAN_DATA/database/database.sqlite"
         chmod g+rw "$PELICAN_DATA/database/database.sqlite"
     fi
+    ln -sf "$PELICAN_DATA/database/database.sqlite" "$PELICAN_APP/database/database.sqlite"
 
     # Make sure the db is set up
     echo "Migrating Database"
