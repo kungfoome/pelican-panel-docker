@@ -64,12 +64,11 @@ initialize_app() {
     # Handle .env file
     ENVFILE="$PELICAN_CONFIG/.env"
     if [ ! -f "$ENVFILE" ]; then
-        echo "Creating new .env file from .env.example"
-        cp "$PELICAN_APP/.env.example" "$ENVFILE"
-
+        echo "Creating minimal .env file"
+        touch "$ENVFILE"
+        
         # Ensure proper permissions on the new file
         if [ "$(id -u)" != "0" ]; then
-            # We're running as non-root, so make sure the file is group-writable
             chmod g+rw "$ENVFILE"
         fi
     fi
