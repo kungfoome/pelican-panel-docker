@@ -11,6 +11,11 @@ export PELICAN_DATA=${PELICAN_DATA:-"$PELICAN_HOME/data"}
 export XDG_DATA_HOME="$PELICAN_DATA"
 export XDG_CONFIG_HOME="$PELICAN_CONFIG"
 
+# Set critical APP_ environment variables with defaults
+export APP_ENV=${APP_ENV:-production}
+export APP_DEBUG=${APP_DEBUG:-false}
+export APP_URL=${APP_URL:-http://localhost}
+
 # Default values for PUID/PGID if not provided
 PUID=${PUID:-1000}
 PGID=${PGID:-1000}
@@ -58,19 +63,36 @@ initialize_app() {
     # Handle .env file
     ENVFILE="$PELICAN_CONFIG/.env"
     if [ ! -f "$ENVFILE" ]; then
-        echo "Creating minimal .env file with APP_KEY placeholder"
+        echo "Creating .env file with APP_ environment variables"
+        # Start with empty .env file
+        touch "$ENVFILE"
+        
+        # Add APP_KEY placeholder first
         echo "APP_KEY=" > "$ENVFILE"
+        
+        # Add all APP_ environment variables from current environment
+        env | grep "^APP_" | grep -v "^APP_KEY=" | sort >> "$ENVFILE"
         
         # Ensure proper permissions on the new file
         if [ "$(id -u)" != "0" ]; then
             chmod g+rw "$ENVFILE"
         fi
     else
-        # If .env exists but doesn't have APP_KEY, add it
+        # For existing .env files, ensure APP_KEY exists (but don't overwrite)
         if ! grep -q "^APP_KEY=" "$ENVFILE"; then
             echo "Adding APP_KEY placeholder to existing .env file"
             echo "APP_KEY=" >> "$ENVFILE"
         fi
+        
+        # Add any APP_ environment variables that don't exist in .env
+        # Skip APP_KEY as it should be managed separately
+        for VAR in $(env | grep "^APP_" | grep -v "^APP_KEY=" | cut -d= -f1); do
+            if ! grep -q "^$VAR=" "$ENVFILE"; then
+                echo "Adding $VAR to existing .env file"
+                VALUE=$(eval echo \$VAR)
+                echo "$VAR=$VALUE" >> "$ENVFILE"
+            fi
+        done
     fi
 
     # Create symlink to .env file
