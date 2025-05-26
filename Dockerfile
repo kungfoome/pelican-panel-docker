@@ -179,10 +179,6 @@ COPY --chown=root:root --chmod=755 docker.d/entrypoint.sh /entrypoint.sh
 
 # Set permissions and create necessary directories
 RUN mkdir -p /etc/supercronic \
-    # Symlink to config and data paths
-    && ln -s "$PELICAN_CONFIG/.env" ./.env \
-    && ln -s "$PELICAN_CONFIG/Caddyfile" ./Caddyfile \
-    && ln -s "$PELICAN_DATA/database/database.sqlite" ./database/database.sqlite \
     # Make sure directories and files have proper permissions
     && chmod -R 750 "$PELICAN_HOME" "$PELICAN_CONFIG" "$PELICAN_DATA" \
     && chown -R abc:abc "$PELICAN_HOME" "$PELICAN_CONFIG" "$PELICAN_DATA" \

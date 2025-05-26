@@ -44,6 +44,13 @@ check_user() {
 
 # Function to initialize the application
 initialize_app() {
+    # Ensure symlinks are properly created at runtime
+    echo "Setting up symlinks for config and data paths"
+    rm -f "$PELICAN_APP/.env" "$PELICAN_APP/Caddyfile" "$PELICAN_APP/database/database.sqlite" 2>/dev/null || true
+    ln -sf "$PELICAN_CONFIG/.env" "$PELICAN_APP/.env"
+    ln -sf "$PELICAN_CONFIG/Caddyfile" "$PELICAN_APP/Caddyfile"
+    ln -sf "$PELICAN_DATA/database/database.sqlite" "$PELICAN_APP/database/database.sqlite"
+
     # Check if a custom Caddyfile exists in the config volume
     CADDYFILE="$PELICAN_CONFIG/Caddyfile"
     if [ ! -f "$CADDYFILE" ]; then
@@ -85,6 +92,13 @@ initialize_app() {
             # We're running as non-root, so make sure the directory is group-writable
             chmod g+rwx "$PELICAN_DATA/database"
         fi
+    fi
+    
+    # Ensure the database file exists to prevent symlink errors
+    if [ ! -f "$PELICAN_DATA/database/database.sqlite" ]; then
+        echo "Creating empty database file"
+        touch "$PELICAN_DATA/database/database.sqlite"
+        chmod g+rw "$PELICAN_DATA/database/database.sqlite"
     fi
 
     # Make sure the db is set up
