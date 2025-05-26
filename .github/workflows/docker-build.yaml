@@ -209,15 +209,20 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: false
 
-      - name: Store latest commit hash
+      - name: Store latest commit hash and update README
         # Only update tracking file for scheduled builds, not manual builds
         if: ${{ github.event_name != 'workflow_dispatch' }}
         run: |
           echo "${{ needs.check_updates.outputs.nightly_commit }}" > .last_built_commit
+          
+          # Make the update script executable and run it
+          chmod +x ./update-readme.sh
+          ./update-readme.sh
+          
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-          git add .last_built_commit
-          git commit -m "Update last built commit [skip ci]" || echo "No changes to commit"
+          git add .last_built_commit README.md
+          git commit -m "Update last built commit and README [skip ci]" || echo "No changes to commit"
           git push
 
   # Build and push release Docker image
@@ -285,13 +290,18 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: false
 
-      - name: Store latest release tag
+      - name: Store latest release tag and update README
         # Only update tracking file for scheduled builds, not manual builds
         if: ${{ github.event_name != 'workflow_dispatch' }}
         run: |
           echo "${{ needs.check_updates.outputs.release_tag }}" > .last_built_release
+          
+          # Make the update script executable and run it
+          chmod +x ./update-readme.sh
+          ./update-readme.sh
+          
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-          git add .last_built_release
-          git commit -m "Update last built release [skip ci]" || echo "No changes to commit"
+          git add .last_built_release README.md
+          git commit -m "Update last built release and README [skip ci]" || echo "No changes to commit"
           git push

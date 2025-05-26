@@ -24,7 +24,7 @@ When a new release of Pelican Panel is published:
 Nightly builds are created automatically from the latest commit on the main branch:
 
 - `nightly` - Always points to the most recent nightly build
-- `commit-{SHA}` - Tagged with the exact Panel commit SHA (e.g., `commit-a1b2c3d4e5f6...`)
+- `commit-{SHA}` - Tagged with the exact Panel commit SHA (e.g., `commit-af9f2c653e2c0e4f0403afcc726059580ff824d4`)
 - `nightly-{YYYYMMDD}` - Date-based tag for historical reference (e.g., `nightly-20240520`)
 
 ## Usage
@@ -56,8 +56,23 @@ docker pull us-docker.pkg.dev/pelican-gcr/pelican/panel:nightly-20240520
 ### Pull a specific commit:
 
 ```bash
-docker pull us-docker.pkg.dev/pelican-gcr/pelican/panel:commit-a1b2c3d4e5f6...
+docker pull us-docker.pkg.dev/pelican-gcr/pelican/panel:commit-af9f2c653e2c0e4f0403afcc726059580ff824d4
 ```
+
+## View All Available Tags
+
+You can view all available tags for this image using:
+
+### Using gcloud CLI:
+
+```bash
+gcloud artifacts docker tags list us-docker.pkg.dev/pelican-gcr/pelican/panel
+```
+
+### Using Artifact Registry UI:
+
+Visit the Google Artifact Registry UI at:
+https://console.cloud.google.com/artifacts/docker/pelican-gcr/us/pelican/panel
 
 ## Build Process
 
