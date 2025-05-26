@@ -19,13 +19,20 @@ ARG REPO_COMMIT=HEAD
 # Clone the repository
 RUN git clone --depth 1 ${REPO_URL} .
 
-# Checkout specific branch if specified
-RUN if [ "$REPO_BRANCH" != "main" ]; then git checkout ${REPO_BRANCH}; fi
+# Checkout specific branch if specified and different from main
+RUN if [ "$REPO_BRANCH" != "main" ]; then \
+    git fetch --depth 1 origin ${REPO_BRANCH} && \
+    git checkout ${REPO_BRANCH}; \
+fi
 
-# If a specific commit or tag is specified, fetch and checkout
-RUN if [ "$REPO_COMMIT" != "HEAD" ]; then \
-    git fetch --depth 1 origin ${REPO_COMMIT} || git fetch --depth 1 origin refs/tags/${REPO_COMMIT}; \
-    git checkout FETCH_HEAD; \
+# If a specific commit or tag is specified, try to check it out
+RUN if [ "$REPO_COMMIT" != "HEAD" ] && [ -n "$REPO_COMMIT" ]; then \
+    echo "Checking out specific reference: ${REPO_COMMIT}" && \
+    git fetch --depth 1 origin ${REPO_COMMIT} || \
+    git fetch --depth 1 origin refs/tags/${REPO_COMMIT} || \
+    git fetch --depth 1 --tags && \
+    (git checkout ${REPO_COMMIT} || git checkout tags/${REPO_COMMIT} || \
+     echo "Failed to checkout ${REPO_COMMIT}, using current HEAD"); \
 fi
 
 # ================================
