@@ -23,20 +23,20 @@ RUN git clone --depth 1 ${REPO_URL} .
 RUN if [ "$REPO_BRANCH" != "main" ]; then \
     git fetch --depth 1 origin ${REPO_BRANCH} && \
     git checkout ${REPO_BRANCH}; \
-fi
+    fi
 
 # If a specific commit or tag is specified, try to check it out
 RUN if [ "$REPO_COMMIT" != "HEAD" ] && [ -n "$REPO_COMMIT" ]; then \
     echo "Checking out specific reference: ${REPO_COMMIT}" && \
     (git fetch --depth 1 origin refs/tags/${REPO_COMMIT} && \
-     git checkout FETCH_HEAD) || \
+    git checkout FETCH_HEAD) || \
     (git fetch --depth 1 origin ${REPO_COMMIT} && \
-     git checkout FETCH_HEAD) || \
+    git checkout FETCH_HEAD) || \
     (git fetch --depth 1 --tags && \
-     git checkout ${REPO_COMMIT} 2>/dev/null || \
-     git checkout tags/${REPO_COMMIT} 2>/dev/null || \
-     echo "Failed to checkout ${REPO_COMMIT}, using current HEAD"); \
-fi
+    git checkout ${REPO_COMMIT} 2>/dev/null || \
+    git checkout tags/${REPO_COMMIT} 2>/dev/null || \
+    echo "Failed to checkout ${REPO_COMMIT}, using current HEAD"); \
+    fi
 
 # ================================
 # Stage 1-1: Composer Install
@@ -188,7 +188,7 @@ RUN mkdir -p /etc/supercronic \
     && chown -R abc:abc "$PELICAN_HOME" "$PELICAN_CONFIG" "$PELICAN_DATA" \
     && chmod -R 755 ./vendor
 
-HEALTHCHECK --interval=5m --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=1m --timeout=10s --start-period=30s --retries=6 \
     CMD curl -f http://localhost/up || exit 1
 
 EXPOSE 80 443
