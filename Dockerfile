@@ -28,10 +28,13 @@ fi
 # If a specific commit or tag is specified, try to check it out
 RUN if [ "$REPO_COMMIT" != "HEAD" ] && [ -n "$REPO_COMMIT" ]; then \
     echo "Checking out specific reference: ${REPO_COMMIT}" && \
-    git fetch --depth 1 origin ${REPO_COMMIT} || \
-    git fetch --depth 1 origin refs/tags/${REPO_COMMIT} || \
-    git fetch --depth 1 --tags && \
-    (git checkout ${REPO_COMMIT} || git checkout tags/${REPO_COMMIT} || \
+    (git fetch --depth 1 origin refs/tags/${REPO_COMMIT} && \
+     git checkout FETCH_HEAD) || \
+    (git fetch --depth 1 origin ${REPO_COMMIT} && \
+     git checkout FETCH_HEAD) || \
+    (git fetch --depth 1 --tags && \
+     git checkout ${REPO_COMMIT} 2>/dev/null || \
+     git checkout tags/${REPO_COMMIT} 2>/dev/null || \
      echo "Failed to checkout ${REPO_COMMIT}, using current HEAD"); \
 fi
 
