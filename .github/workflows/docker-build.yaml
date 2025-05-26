@@ -31,7 +31,11 @@ jobs:
   check_updates:
     runs-on: ubuntu-latest
     outputs:
-      build_matrix: ${{ steps.set-matrix.outputs.matrix }}
+      should_build_nightly: ${{ steps.check.outputs.should_build_nightly }}
+      should_build_release: ${{ steps.check.outputs.should_build_release }}
+      nightly_commit: ${{ steps.check.outputs.nightly_commit }}
+      release_tag: ${{ steps.check.outputs.release_tag }}
+      nightly_branch: ${{ steps.check.outputs.nightly_branch }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -44,6 +48,7 @@ jobs:
           SHOULD_BUILD_RELEASE="false"
           NIGHTLY_COMMIT=""
           RELEASE_TAG=""
+          NIGHTLY_BRANCH="main"
           
           # For manual runs, use the specified parameters
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
@@ -52,14 +57,15 @@ jobs:
             if [ "${{ github.event.inputs.build_type }}" == "nightly" ]; then
               echo "Manual nightly build requested"
               SHOULD_BUILD_NIGHTLY="true"
+              NIGHTLY_BRANCH="${{ github.event.inputs.branch || 'main' }}"
               
               if [ -n "${{ github.event.inputs.commit }}" ]; then
                 NIGHTLY_COMMIT="${{ github.event.inputs.commit }}"
                 echo "Using specified commit: $NIGHTLY_COMMIT"
               else
-                # Get latest commit from main branch
-                NIGHTLY_COMMIT=$(curl -s https://api.github.com/repos/pelican-dev/panel/commits/${{ github.event.inputs.branch || 'main' }} | jq -r '.sha')
-                echo "Using latest commit from ${{ github.event.inputs.branch || 'main' }}: $NIGHTLY_COMMIT"
+                # Get latest commit from specified branch
+                NIGHTLY_COMMIT=$(curl -s https://api.github.com/repos/pelican-dev/panel/commits/$NIGHTLY_BRANCH | jq -r '.sha')
+                echo "Using latest commit from $NIGHTLY_BRANCH: $NIGHTLY_COMMIT"
               fi
             elif [ "${{ github.event.inputs.build_type }}" == "release" ]; then
               echo "Manual release build requested"
@@ -116,44 +122,29 @@ jobs:
             fi
           fi
           
-          # Create build matrix
-          BUILDS=()
+          # Output the results
+          echo "should_build_nightly=$SHOULD_BUILD_NIGHTLY" >> $GITHUB_OUTPUT
+          echo "should_build_release=$SHOULD_BUILD_RELEASE" >> $GITHUB_OUTPUT
+          echo "nightly_commit=$NIGHTLY_COMMIT" >> $GITHUB_OUTPUT
+          echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
+          echo "nightly_branch=$NIGHTLY_BRANCH" >> $GITHUB_OUTPUT
           
-          if [ "$SHOULD_BUILD_NIGHTLY" == "true" ] && [ -n "$NIGHTLY_COMMIT" ]; then
-            BUILDS+=("{\"type\":\"nightly\",\"ref\":\"$NIGHTLY_COMMIT\",\"branch\":\"${{ github.event.inputs.branch || 'main' }}\"}")
-          fi
-          
-          if [ "$SHOULD_BUILD_RELEASE" == "true" ] && [ -n "$RELEASE_TAG" ]; then
-            BUILDS+=("{\"type\":\"release\",\"ref\":\"$RELEASE_TAG\",\"branch\":\"main\"}")
-          fi
-          
-          # Output the matrix
-          if [ ${#BUILDS[@]} -gt 0 ]; then
-            MATRIX="{\"include\":[$(IFS=,; echo "${BUILDS[*]}")]}"
-            echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
-            echo "Build matrix: $MATRIX"
-          else
-            echo "No builds to run"
-            MATRIX="{\"include\":[]}"
-            echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
-          fi
+          # Summary
+          echo "Build summary:"
+          echo "- Build nightly: $SHOULD_BUILD_NIGHTLY"
+          echo "- Build release: $SHOULD_BUILD_RELEASE"
+          echo "- Nightly commit: $NIGHTLY_COMMIT"
+          echo "- Release tag: $RELEASE_TAG"
+          echo "- Branch: $NIGHTLY_BRANCH"
 
-      - name: Set build matrix
-        id: set-matrix
-        run: |
-          echo "${{ steps.check.outputs.matrix }}"
-
-  # Build and push Docker images
-  build_and_push:
+  # Build and push nightly Docker image
+  build_nightly:
     needs: check_updates
-    if: ${{ fromJSON(needs.check_updates.outputs.build_matrix).include[0] }}
+    if: ${{ needs.check_updates.outputs.should_build_nightly == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: "write"
       id-token: "write"
-    strategy:
-      matrix: ${{ fromJSON(needs.check_updates.outputs.build_matrix) }}
-      fail-fast: false
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -182,27 +173,14 @@ jobs:
         run: |
           # Get current date in YYYYMMDD format
           DATE_TAG=$(date +'%Y%m%d')
+          COMMIT="${{ needs.check_updates.outputs.nightly_commit }}"
           
-          # Set parameters based on build type
-          if [ "${{ matrix.type }}" == "release" ]; then
-            echo "Building release: ${{ matrix.ref }}"
-            
-            # For releases, tag as latest and with the version
-            DOCKER_TAGS="us-docker.pkg.dev/pelican-gcr/pelican/panel:latest,us-docker.pkg.dev/pelican-gcr/pelican/panel:${{ matrix.ref }}"
-            
-            echo "docker_tags=$DOCKER_TAGS" >> $GITHUB_OUTPUT
-            echo "ref=${{ matrix.ref }}" >> $GITHUB_OUTPUT
-            echo "build_type=release" >> $GITHUB_OUTPUT
-          else
-            echo "Building nightly from commit: ${{ matrix.ref }}"
-            
-            # For nightlies, tag with nightly, commit SHA, and date
-            DOCKER_TAGS="us-docker.pkg.dev/pelican-gcr/pelican/panel:nightly,us-docker.pkg.dev/pelican-gcr/pelican/panel:commit-${{ matrix.ref }},us-docker.pkg.dev/pelican-gcr/pelican/panel:nightly-$DATE_TAG"
-            
-            echo "docker_tags=$DOCKER_TAGS" >> $GITHUB_OUTPUT
-            echo "ref=${{ matrix.ref }}" >> $GITHUB_OUTPUT
-            echo "build_type=nightly" >> $GITHUB_OUTPUT
-          fi
+          echo "Building nightly from commit: $COMMIT"
+          
+          # For nightlies, tag with nightly, commit SHA, and date
+          DOCKER_TAGS="us-docker.pkg.dev/pelican-gcr/pelican/panel:nightly,us-docker.pkg.dev/pelican-gcr/pelican/panel:commit-$COMMIT,us-docker.pkg.dev/pelican-gcr/pelican/panel:nightly-$DATE_TAG"
+          
+          echo "docker_tags=$DOCKER_TAGS" >> $GITHUB_OUTPUT
 
       - name: Build and push
         uses: docker/build-push-action@v5
@@ -212,26 +190,83 @@ jobs:
           tags: ${{ steps.params.outputs.docker_tags }}
           build-args: |
             REPO_URL=https://github.com/pelican-dev/panel.git
-            REPO_BRANCH=${{ matrix.branch }}
-            REPO_COMMIT=${{ steps.params.outputs.ref }}
+            REPO_BRANCH=${{ needs.check_updates.outputs.nightly_branch }}
+            REPO_COMMIT=${{ needs.check_updates.outputs.nightly_commit }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           provenance: false
 
-      - name: Store build information
+      - name: Store latest commit hash
         run: |
-          if [ "${{ steps.params.outputs.build_type }}" == "nightly" ]; then
-            echo "${{ matrix.ref }}" > .last_built_commit
-            git config --global user.name "GitHub Actions"
-            git config --global user.email "actions@github.com"
-            git add .last_built_commit
-            git commit -m "Update last built commit [skip ci]" || echo "No changes to commit"
-            git push
-          else
-            echo "${{ matrix.ref }}" > .last_built_release
-            git config --global user.name "GitHub Actions"
-            git config --global user.email "actions@github.com"
-            git add .last_built_release
-            git commit -m "Update last built release [skip ci]" || echo "No changes to commit"
-            git push
-          fi
+          echo "${{ needs.check_updates.outputs.nightly_commit }}" > .last_built_commit
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add .last_built_commit
+          git commit -m "Update last built commit [skip ci]" || echo "No changes to commit"
+          git push
+
+  # Build and push release Docker image
+  build_release:
+    needs: check_updates
+    if: ${{ needs.check_updates.outputs.should_build_release == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: "write"
+      id-token: "write"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: "${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}"
+          service_account: "${{ secrets.SERVICE_ACCOUNT_EMAIL }}"
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker us-docker.pkg.dev --quiet
+
+      - name: Set build parameters
+        id: params
+        run: |
+          RELEASE_TAG="${{ needs.check_updates.outputs.release_tag }}"
+          
+          echo "Building release: $RELEASE_TAG"
+          
+          # For releases, tag as latest and with the version
+          DOCKER_TAGS="us-docker.pkg.dev/pelican-gcr/pelican/panel:latest,us-docker.pkg.dev/pelican-gcr/pelican/panel:$RELEASE_TAG"
+          
+          echo "docker_tags=$DOCKER_TAGS" >> $GITHUB_OUTPUT
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.params.outputs.docker_tags }}
+          build-args: |
+            REPO_URL=https://github.com/pelican-dev/panel.git
+            REPO_BRANCH=main
+            REPO_COMMIT=${{ needs.check_updates.outputs.release_tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: false
+
+      - name: Store latest release tag
+        run: |
+          echo "${{ needs.check_updates.outputs.release_tag }}" > .last_built_release
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add .last_built_release
+          git commit -m "Update last built release [skip ci]" || echo "No changes to commit"
+          git push
