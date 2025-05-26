@@ -109,6 +109,9 @@ jobs:
           BRANCH="${{ github.event.inputs.branch || 'main' }}"
           COMMIT="${{ github.event.inputs.commit || needs.check_for_updates.outputs.latest_commit || 'HEAD' }}"
           
+          # Get current date in YYYYMMDD format
+          DATE_TAG=$(date +'%Y%m%d')
+          
           # Set tag variables
           if [[ "${{ needs.check_for_updates.outputs.is_release }}" == "true" ]]; then
             # This is a release build
@@ -127,9 +130,8 @@ jobs:
             # This is a nightly build
             echo "Building nightly from commit: $COMMIT"
             
-            # For nightlies, we use the commit SHA from Panel and nightly tag
-            SHORT_SHA=$(echo "$COMMIT" | cut -c1-8)
-            DOCKER_TAGS="us-docker.pkg.dev/pelican-gcr/pelican/panel:nightly,us-docker.pkg.dev/pelican-gcr/pelican/panel:sha-$SHORT_SHA"
+            # For nightlies, we use the full commit SHA from Panel, date tag, and nightly tag
+            DOCKER_TAGS="us-docker.pkg.dev/pelican-gcr/pelican/panel:nightly,us-docker.pkg.dev/pelican-gcr/pelican/panel:commit-$COMMIT,us-docker.pkg.dev/pelican-gcr/pelican/panel:nightly-$DATE_TAG"
             
             echo "release_tag=" >> $GITHUB_OUTPUT
           fi
@@ -150,6 +152,7 @@ jobs:
             REPO_COMMIT=${{ steps.build_params.outputs.repo_commit }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          provenance: false
 
       - name: Store latest commit hash
         if: ${{ needs.check_for_updates.outputs.latest_commit != '' && needs.check_for_updates.outputs.is_release != 'true' }}
