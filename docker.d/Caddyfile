@@ -3,10 +3,10 @@
     admin off
     email {$ADMIN_EMAIL:pelican@example.com}
     frankenphp
+    auto_https {$AUTO_HTTPS:on}
 }
 
-# Common configuration for both HTTP and HTTPS
-(common_config) {
+:80, :443 {
     # Set the webroot to the public directory
     root * {$PELICAN_APP:}/public
 
@@ -33,14 +33,4 @@
         output stdout
         format json
     }
-}
-
-# HTTPS configuration (port 443)
-https://{$APP_URL:localhost}:443 {
-    import common_config
-}
-
-# HTTP configuration (port 80)
-http://{$APP_URL:localhost}:80 {
-    import common_config
 }

@@ -184,7 +184,7 @@ RUN mkdir -p /etc/supercronic \
     && chown -R abc:abc "$PELICAN_HOME" "$PELICAN_CONFIG" "$PELICAN_DATA" \
     && chmod -R 755 ./vendor
 
-HEALTHCHECK --interval=1m --timeout=10s --start-period=30s --retries=6 \
+HEALTHCHECK --interval=15s --timeout=10s --start-period=30s --retries=6 \
     CMD curl -f http://localhost/up || exit 1
 
 EXPOSE 80 443
