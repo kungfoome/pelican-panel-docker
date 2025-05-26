@@ -3,7 +3,7 @@
     admin off
     email {$ADMIN_EMAIL:pelican@example.com}
     frankenphp
-    auto_https {$AUTO_HTTPS:on}
+    import {$PELICAN_CONFIG}/caddy_global.conf
 }
 
 :80, :443 {

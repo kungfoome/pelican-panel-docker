@@ -94,3 +94,17 @@ The Docker image includes:
 ## License
 
 This repository is licensed under the same license as Pelican Panel.
+
+## Quick Start
+
+To quickly test the Docker image with minimal configuration:
+
+```bash
+# Pull the latest image
+docker pull us-docker.pkg.dev/pelican-gcr/pelican/panel:latest
+
+# Run with minimal configuration (data will not persist)
+docker run -p 8443:443 us-docker.pkg.dev/pelican-gcr/pelican/panel:latest
+```
+
+This will start the container and expose it on ports 80 and 443. You can access the panel at https://localhost:8443.
