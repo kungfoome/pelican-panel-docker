@@ -11,11 +11,8 @@ export PELICAN_DATA=${PELICAN_DATA:-"$PELICAN_HOME/data"}
 export XDG_DATA_HOME="$PELICAN_DATA"
 export XDG_CONFIG_HOME="$PELICAN_CONFIG"
 
-# Process Caddy global options
+# Caddy global options
 GLOBAL_CADDY_OPTS=${GLOBAL_CADDY_OPTS:-""}
-CADDY_GLOBAL_CONFIG="$PELICAN_CONFIG/caddy_global.conf"
-echo "# Generated Caddy global options" > "$CADDY_GLOBAL_CONFIG"
-echo "$GLOBAL_CADDY_OPTS" | tr ';' '\n' >> "$CADDY_GLOBAL_CONFIG"
 
 # Set critical APP_ environment variables with defaults
 export APP_ENV=${APP_ENV:-production}
@@ -65,11 +62,10 @@ initialize_app() {
         echo "Using custom Caddyfile from config volume"
     fi
     ln -sf "$PELICAN_CONFIG/Caddyfile" "$PELICAN_APP/Caddyfile"
-    
-    # Ensure caddy_global.conf exists even if not created earlier
-    if [ ! -f "$PELICAN_CONFIG/caddy_global.conf" ]; then
-        echo "# Caddy global options (empty by default)" > "$PELICAN_CONFIG/caddy_global.conf"
-    fi
+
+    CADDY_GLOBAL_CONFIG="$PELICAN_CONFIG/caddy_global.conf"
+    echo "# Generated Caddy global options" > "$CADDY_GLOBAL_CONFIG"
+    echo "$GLOBAL_CADDY_OPTS" | tr ';' '\n' >> "$CADDY_GLOBAL_CONFIG"
 
     # Handle .env file
     ENVFILE="$PELICAN_CONFIG/.env"
