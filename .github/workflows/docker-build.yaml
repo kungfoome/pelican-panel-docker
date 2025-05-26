@@ -2,7 +2,7 @@ name: Build and Push Docker Image to Artifact Registry
 
 on:
   schedule:
-    - cron: "0 0 * * *"  # Run daily at midnight UTC
+    - cron: "17 9 * * *"  # Run daily at 2:17 AM Pacific (9:17 AM UTC)
   workflow_dispatch:
     inputs:
       build_type:
@@ -25,6 +25,11 @@ on:
         description: "Specific release tag to build (for release builds)"
         required: false
         default: ""
+      add_standard_tags:
+        description: "Add standard tags (nightly/latest, date-based for nightly)"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   # Check for updates and determine what to build
@@ -177,8 +182,16 @@ jobs:
           
           echo "Building nightly from commit: $COMMIT"
           
-          # For nightlies, tag with nightly, commit SHA, and date
-          DOCKER_TAGS="us-docker.pkg.dev/pelican-gcr/pelican/panel:nightly,us-docker.pkg.dev/pelican-gcr/pelican/panel:commit-$COMMIT,us-docker.pkg.dev/pelican-gcr/pelican/panel:nightly-$DATE_TAG"
+          # Set tags based on user preference
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ "${{ github.event.inputs.add_standard_tags }}" != "true" ]; then
+            # For manual builds without standard tags, just use the commit SHA
+            DOCKER_TAGS="us-docker.pkg.dev/pelican-gcr/pelican/panel:commit-$COMMIT"
+            echo "Using only commit-based tag for manual build"
+          else
+            # For scheduled builds or when standard tags are requested, use all tags
+            DOCKER_TAGS="us-docker.pkg.dev/pelican-gcr/pelican/panel:nightly,us-docker.pkg.dev/pelican-gcr/pelican/panel:commit-$COMMIT,us-docker.pkg.dev/pelican-gcr/pelican/panel:nightly-$DATE_TAG"
+            echo "Using all standard tags"
+          fi
           
           echo "docker_tags=$DOCKER_TAGS" >> $GITHUB_OUTPUT
 
@@ -243,8 +256,16 @@ jobs:
           
           echo "Building release: $RELEASE_TAG"
           
-          # For releases, tag as latest and with the version
-          DOCKER_TAGS="us-docker.pkg.dev/pelican-gcr/pelican/panel:latest,us-docker.pkg.dev/pelican-gcr/pelican/panel:$RELEASE_TAG"
+          # Set tags based on user preference
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ "${{ github.event.inputs.add_standard_tags }}" != "true" ]; then
+            # For manual builds without standard tags, just use the version tag
+            DOCKER_TAGS="us-docker.pkg.dev/pelican-gcr/pelican/panel:$RELEASE_TAG"
+            echo "Using only version tag for manual build"
+          else
+            # For scheduled builds or when standard tags are requested, include latest tag
+            DOCKER_TAGS="us-docker.pkg.dev/pelican-gcr/pelican/panel:latest,us-docker.pkg.dev/pelican-gcr/pelican/panel:$RELEASE_TAG"
+            echo "Using version and latest tags"
+          fi
           
           echo "docker_tags=$DOCKER_TAGS" >> $GITHUB_OUTPUT
 
