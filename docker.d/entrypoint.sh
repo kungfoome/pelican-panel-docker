@@ -12,7 +12,7 @@ export XDG_DATA_HOME="$PELICAN_DATA"
 export XDG_CONFIG_HOME="$PELICAN_CONFIG"
 
 # Caddy global options
-export GLOBAL_CADDY_OPTS=${GLOBAL_CADDY_OPTS:-""}
+export CADDY_GLOBAL_OPTS=${CADDY_GLOBAL_OPTS:-""}
 export CADDY_DOMAIN=${CADDY_DOMAIN:-"localhost"}
 export CADDY_PORT=${CADDY_PORT:-"443"}
 
@@ -67,7 +67,7 @@ initialize_app() {
 
     CADDY_GLOBAL_CONFIG="$PELICAN_CONFIG/caddy_global.conf"
     echo "# Generated Caddy global options" > "$CADDY_GLOBAL_CONFIG"
-    echo "$GLOBAL_CADDY_OPTS" | tr ';' '\n' >> "$CADDY_GLOBAL_CONFIG"
+    echo "$CADDY_GLOBAL_OPTS" | tr ';' '\n' >> "$CADDY_GLOBAL_CONFIG"
 
     # Handle .env file
     ENVFILE="$PELICAN_CONFIG/.env"

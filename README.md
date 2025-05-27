@@ -125,14 +125,14 @@ The following environment variables can be used to customize the server:
 
 - `CADDY_DOMAIN`: Domain name for the server (default: localhost)
 - `CADDY_PORT`: Port to listen on (default: 443)
-- `GLOBAL_CADDY_OPTS`: Additional Caddy global options, separated by semicolons
+- `CADDY_GLOBAL_OPTS`: Additional Caddy global options, separated by semicolons
 
 Example with custom options:
 
 ```bash
 docker run -p 8443:443 \
   -e CADDY_DOMAIN=panel.example.com \
-  -e GLOBAL_CADDY_OPTS="debug; log level INFO" \
+  -e CADDY_GLOBAL_OPTS="debug; log level INFO" \
   us-docker.pkg.dev/pelican-gcr/pelican/panel:latest
 ```
 ### All Environment Variables
@@ -142,7 +142,7 @@ The following environment variables can be configured:
 #### Web Server Configuration
 - `CADDY_DOMAIN`: Domain name for the server (default: localhost)
 - `CADDY_PORT`: Port to listen on (default: 443)
-- `GLOBAL_CADDY_OPTS`: Additional Caddy global options, separated by semicolons
+- `CADDY_GLOBAL_OPTS`: Additional Caddy global options, separated by semicolons
 - `ADMIN_EMAIL`: Email address for Let's Encrypt certificates (default: pelican@example.com)
 
 #### Application Configuration
@@ -159,6 +159,7 @@ The following environment variables can be configured:
 #### System Configuration
 - `PUID`: User ID to run the application as (default: 1000)
 - `PGID`: Group ID to run the application as (default: 1000)
+- `TZ`: Timezone for the container (e.g., "America/New_York", "Europe/London")
 
 ### Container Paths
 
