@@ -150,7 +150,8 @@ RUN apk update && apk add --no-cache \
     libzip \
     libpng \
     icu-libs \
-    libxml2
+    libxml2 \
+    tzdata
 
 # Set environment variables for paths
 ENV PELICAN_HOME=/pelican \
