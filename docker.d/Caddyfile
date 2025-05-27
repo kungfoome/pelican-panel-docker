@@ -6,7 +6,7 @@
     import {$PELICAN_CONFIG}/caddy_global.conf
 }
 
-:80, :443 {
+{$CADDY_DOMAIN:localhost}:{$CADDY_PORT:443} {
     # Set the webroot to the public directory
     root * {$PELICAN_APP:}/public
 

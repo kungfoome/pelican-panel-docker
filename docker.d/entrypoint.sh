@@ -12,7 +12,9 @@ export XDG_DATA_HOME="$PELICAN_DATA"
 export XDG_CONFIG_HOME="$PELICAN_CONFIG"
 
 # Caddy global options
-GLOBAL_CADDY_OPTS=${GLOBAL_CADDY_OPTS:-""}
+export GLOBAL_CADDY_OPTS=${GLOBAL_CADDY_OPTS:-""}
+export CADDY_DOMAIN=${CADDY_DOMAIN:-"localhost"}
+export CADDY_PORT=${CADDY_PORT:-"443"}
 
 # Set critical APP_ environment variables with defaults
 export APP_ENV=${APP_ENV:-production}

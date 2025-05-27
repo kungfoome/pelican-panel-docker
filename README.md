@@ -103,8 +103,81 @@ To quickly test the Docker image with minimal configuration:
 # Pull the latest image
 docker pull us-docker.pkg.dev/pelican-gcr/pelican/panel:latest
 
-# Run with minimal configuration (data will not persist)
+# Run with HTTPS (default)
 docker run -p 8443:443 us-docker.pkg.dev/pelican-gcr/pelican/panel:latest
 ```
 
-This will start the container and expose it on ports 80 and 443. You can access the panel at https://localhost:8443.
+You can access the panel at https://localhost:8443.
+
+### Running with HTTP Only
+
+If you prefer to run with HTTP only (no HTTPS):
+
+```bash
+docker run -p 8080:80 -e CADDY_PORT=80 us-docker.pkg.dev/pelican-gcr/pelican/panel:latest
+```
+
+You can access the panel at http://localhost:8080.
+
+### Configuration Options
+
+The following environment variables can be used to customize the server:
+
+- `CADDY_DOMAIN`: Domain name for the server (default: localhost)
+- `CADDY_PORT`: Port to listen on (default: 443)
+- `GLOBAL_CADDY_OPTS`: Additional Caddy global options, separated by semicolons
+
+Example with custom options:
+
+```bash
+docker run -p 8443:443 \
+  -e CADDY_DOMAIN=panel.example.com \
+  -e GLOBAL_CADDY_OPTS="debug; log level INFO" \
+  us-docker.pkg.dev/pelican-gcr/pelican/panel:latest
+```
+### All Environment Variables
+
+The following environment variables can be configured:
+
+#### Web Server Configuration
+- `CADDY_DOMAIN`: Domain name for the server (default: localhost)
+- `CADDY_PORT`: Port to listen on (default: 443)
+- `GLOBAL_CADDY_OPTS`: Additional Caddy global options, separated by semicolons
+- `ADMIN_EMAIL`: Email address for Let's Encrypt certificates (default: pelican@example.com)
+
+#### Application Configuration
+- `APP_ENV`: Application environment (default: production)
+- `APP_DEBUG`: Enable debug mode (default: false)
+- `APP_URL`: Application URL (default: http://localhost)
+- `APP_KEY`: Laravel application key (auto-generated if not provided)
+
+#### User Configuration
+- `ADMIN_EMAIL`: Email for the default admin user (default: pelican@example.com)
+- `ADMIN_USERNAME`: Username for the default admin user (default: pelican)
+- `ADMIN_PASSWORD`: Password for the default admin user (default: pelican)
+
+#### System Configuration
+- `PUID`: User ID to run the application as (default: 1000)
+- `PGID`: Group ID to run the application as (default: 1000)
+
+### Container Paths
+
+The container uses the following directory structure:
+
+- `/pelican/app`: Application files (read-only)
+- `/pelican/config`: Configuration files (should be persisted)
+- `/pelican/data`: Application data (should be persisted)
+
+For persistent data, mount volumes to the config and data directories:
+
+```bash
+docker run -p 8443:443 \
+  -v pelican-config:/pelican/config \
+  -v pelican-data:/pelican/data \
+  us-docker.pkg.dev/pelican-gcr/pelican/panel:latest
+```
+
+Important files in these directories:
+- `/pelican/config/.env`: Laravel environment file
+- `/pelican/config/Caddyfile`: Web server configuration
+- `/pelican/data/database`: SQLite database location
