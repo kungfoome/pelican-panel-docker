@@ -53,6 +53,22 @@ n## View All Available Tags
 
 You can view all available tags for this image using:
 
+n## View All Available Tags
+
+You can view all available tags for this image using:
+
+### Using gcloud CLI:
+
+```bash
+gcloud artifacts docker tags list us-docker.pkg.dev/pelican-gcr/pelican/panel
+```
+
+### Using Docker Hub UI:
+
+Visit the Google Artifact Registry UI at:
+https://console.cloud.google.com/artifacts/docker/pelican-gcr/us/pelican/panel
+
+
 ### Using gcloud CLI:
 
 ```bash
@@ -146,7 +162,7 @@ docker pull us-docker.pkg.dev/pelican-gcr/pelican/panel:nightly
 ### Pull a specific nightly build by date:
 
 ```bash
-docker pull us-docker.pkg.dev/pelican-gcr/pelican/panel:nightly-20250608
+docker pull us-docker.pkg.dev/pelican-gcr/pelican/panel:nightly-20250611
 ```
 
 ### Pull a specific commit:
