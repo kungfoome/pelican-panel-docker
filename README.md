@@ -49,7 +49,7 @@ docker pull us-docker.pkg.dev/pelican-gcr/pelican/panel:latest
 ### Pull a specific version:
 
 ```bash
-docker pull us-docker.pkg.dev/pelican-gcr/pelican/panel:v1.0.0-beta24
+docker pull us-docker.pkg.dev/pelican-gcr/pelican/panel:v1.0.0-beta25
 ```
 
 ### Pull the latest nightly build:
@@ -61,7 +61,7 @@ docker pull us-docker.pkg.dev/pelican-gcr/pelican/panel:nightly
 ### Pull a specific nightly build by date:
 
 ```bash
-docker pull us-docker.pkg.dev/pelican-gcr/pelican/panel:nightly-20250905
+docker pull us-docker.pkg.dev/pelican-gcr/pelican/panel:nightly-20250906
 ```
 
 ### Pull a specific commit:
