@@ -61,7 +61,7 @@ docker pull us-docker.pkg.dev/pelican-gcr/pelican/panel:nightly
 ### Pull a specific nightly build by date:
 
 ```bash
-docker pull us-docker.pkg.dev/pelican-gcr/pelican/panel:nightly-20250916
+docker pull us-docker.pkg.dev/pelican-gcr/pelican/panel:nightly-20250917
 ```
 
 ### Pull a specific commit:
